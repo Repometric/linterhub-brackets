@@ -1,0 +1,102 @@
+(function () {
+    "use strict";
+    var path = require('path');
+
+    class Logger
+    {
+        constructor(callback)
+        {
+            this.callback = callback;
+            this.prefix = "Linterhub: ";
+        }
+        info(string)
+        {
+            this.callback(this.prefix + string, "info");
+        }
+        error(string)
+        {
+            this.callback(this.prefix + string, "error");
+        }
+        warn(string)
+        {
+            this.callback(this.prefix + string, "warn");
+        }
+    }
+
+    class StatusLogger
+    {
+        constructor(callback)
+        {
+            this.callback = callback;
+        }
+        
+        update(params, progress, text)
+        {
+            if(typeof progress !== "undefined")
+                this.callback(text, Boolean(progress));
+            else
+                this.callback(text, true);
+        }
+    }
+
+    class IntegrationLogic
+    {
+        constructor(project, version, callback_log, callback_status, callback_save_settings) {
+            this.save_settings = callback_save_settings;
+            this.project = project;
+            this.linterhub_version = version;
+            this.logger = new Logger(callback_log);
+            this.status = new StatusLogger(callback_status);
+            this.status.update(null, false, "Active")
+        }
+
+        saveConfig(settings)
+        {
+            this.save_settings('run_mode', settings.linterhub.mode);
+            this.save_settings('cli_path', settings.linterhub.cliPath);
+        }
+
+        normalizePath(_path)
+        {
+            return path.relative(this.project, _path);
+        }
+        
+        sendDiagnostics(data, doc = null) {
+            let json = JSON.parse(data);
+            var result = {errors: []};
+            for (let index = 0; index < json.length; index++) {
+                var linterResult = json[index];
+                linterResult.Model.Files.forEach((file) => {
+                    file.Errors.forEach((error) => {
+                        result.errors.push(this.convertError(error, linterResult.Name, file.Path));
+                    });
+                });
+            }
+            return result;
+        }
+
+        convertError(message, linter, file) {
+            var TYPES = {
+                "0": "problem_type_error",
+                "1": "problem_type_warning",
+                "2": "problem_type_meta",
+                "3": "problem_type_meta"
+            };
+            let row = message.Row || { Start: message.Line, End: message.Line };
+            let column = message.Column || { Start: message.Character, End: message.Character };
+            return {
+                pos: {
+                    line: row.Start - 1,
+                    ch: column.Start
+                },
+                endPos: {
+                    line: row.End - 1,
+                    ch: column.End
+                },
+                message: linter + ": " + message.Message + " [" + message.Rule.Name + "]",
+                type: TYPES[message.severity]
+            };
+        }
+    }
+    exports.IntegrationLogic = IntegrationLogic;
+}());

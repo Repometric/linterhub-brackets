@@ -1,0 +1,14 @@
+{
+    "name": "repometric.linterhub-brackets-server",
+    "title": "Linterhub",
+    "description": "Server part for Linterhub Brackets Extension",
+    "homepage": "https://github.com/binore/linterhub-brackets",
+    "version": "0.0.1",
+    "author": "Oleg Safonov <by.xsofa@gmail.com> (http://github.com/binore)",
+    "license": "MIT",
+    "dependencies": {
+        "fs": "0.0.1-security",
+        "path": "^0.12.7",
+        "linterhub-ide": "^0.3.2"
+    }
+}
