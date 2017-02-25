@@ -8,13 +8,12 @@ define(function (require, exports, module) {
     var CodeInspection  = brackets.getModule('language/CodeInspection');
     var LanguageManager = brackets.getModule('language/LanguageManager');
     var ProjectManager  = brackets.getModule('project/ProjectManager');
-    var ExtensionUtils  = brackets.getModule('utils/ExtensionUtils');
-    var FileUtils       = brackets.getModule('file/FileUtils');
     var NodeDomain      = brackets.getModule('utils/NodeDomain');
     var StatusBar       = brackets.getModule("widgets/StatusBar");
     var PreferencesManager = brackets.getModule("preferences/PreferencesManager");
-    var ProblemWidget = require("ProblemWidget");
+    var Reporter = require("reporter");
     var EditorManager = brackets.getModule("editor/EditorManager");
+    var CodeMirror = brackets.getModule("thirdparty/CodeMirror2/lib/codemirror");
     
     var $foo = $("<div class='linterhub-statusbar'>Linterhub: Unable</div>");
     StatusBar.addIndicator("repometric.linterhub-brackets.status", $foo, true, "");
@@ -22,9 +21,46 @@ define(function (require, exports, module) {
     var catalog = null; // TODO: parse languages of active linters and register providers
     var integration = new NodeDomain("linterhub", ExtensionUtils.getModulePath(module, "node/domain"));
     var prefs = PreferencesManager.getExtensionPrefs("repometric.linterhub-brackets");
+    var reporter = new Reporter();
+    
+    var bracketsLinterEnabled = true;
+    var CMD_SHOW_LINE_DETAILS = "repometric.linterhub-atom.showLineDetails";
+    var linter;
+
+    ExtensionUtils.loadStyleSheet(module, "style.less");
+    CommandManager.register("Show Line Details", CMD_SHOW_LINE_DETAILS, handleToggleLineDetails);
     
     prefs.definePreference("cli_path", "string", null);
     prefs.definePreference("run_mode", "number", null);
+    
+    function addGutter(editor) {
+        var cm = editor._codeMirror;
+        var gutters = cm.getOption("gutters").slice(0);
+        if (gutters.indexOf("repometric-linterhub-gutter") === -1) {
+            gutters.unshift("repometric-linterhub-gutter");
+            cm.setOption("gutters", gutters);
+        }
+    }
+    
+    function activateEditor(editor) {
+        editor._codeMirror.on("gutterClick", gutterClick);
+    }
+
+
+    function deactivateEditor(editor) {
+        editor._codeMirror.off("gutterClick", gutterClick);
+    }
+
+
+    function gutterClick(cm, lineIndex, gutterId) {
+        if (gutterId === "repometric-linterhub-gutter") {
+            reporter.toggleLineDetails(lineIndex);
+        }
+    }
+
+    function handleToggleLineDetails() {
+        reporter.toggleLineDetails();
+    }
     
     function log_handler(domain, message, type)
     {
@@ -57,15 +93,50 @@ define(function (require, exports, module) {
     
     function settings_handler(domain, name, value)
     {
-        console.log(name + ": " + value)
         prefs.set(name, value);
     }
 
     function analyzeFile(text, filePath)
     {
+        function convert_type(type)
+        {
+            switch(type)
+            {
+                case "problem_type_error": return "error";
+                case "problem_type_warning": return "warning";
+                case "problem_type_meta": return "warning"; // TODO: add hints to css and Problem Widget
+            }
+        }
         var deferred = new $.Deferred();
         integration.exec("analyzeFile", filePath)
             .then(function (result) {
+                console.log(JSON.stringify(result));
+                var activeEditor = EditorManager.getActiveEditor();
+
+                var cm = activeEditor._codeMirror;
+                var messages = [];
+                result.errors.forEach(function(x){
+                    messages.push({
+                        "id": x.rule,
+                        "code": x.rule,
+                        "type": convert_type(x.type),
+                        "message": x.message,
+                        "token": {
+                            "start": x.pos,
+                            "end": x.endPos
+                        },
+                        "pos": {
+                            "line": x.pos.line + 1,
+                            "ch": x.pos.ch + 1
+                        }
+                    });
+                });
+                reporter.report(cm, messages);
+                reporter.toggleLineDetails();
+                deactivateEditor(EditorManager.getActiveEditor());
+                activateEditor(EditorManager.getActiveEditor());
+                addGutter(EditorManager.getActiveEditor());
+            
                 return deferred.resolve(result);
             }, function (err) {
                 deferred.reject(err);
@@ -78,12 +149,12 @@ define(function (require, exports, module) {
         integration.exec("catalog").then(function(data){
             catalog = data;
             return data;
-        })
+        });
     }
 
     CommandManager.register("Linterhub Version", "linterhub-menu.version", version_handler);
 
-    var menu = Menus.addMenu("Linterhub", "repometric.linterhub-brackets.main-menu")
+    var menu = Menus.addMenu("Linterhub", "repometric.linterhub-brackets.main-menu");
     menu.addMenuItem("linterhub-menu.version");
     
     integration.on("log", log_handler);
@@ -97,6 +168,7 @@ define(function (require, exports, module) {
                 scanFileAsync: analyzeFile
             });
             getCatalog();
+            activateEditor(EditorManager.getActiveEditor());
         });
     });
 

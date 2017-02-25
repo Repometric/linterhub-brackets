@@ -76,12 +76,12 @@
         }
 
         convertError(message, linter, file) {
-            var TYPES = {
-                "0": "problem_type_error",
-                "1": "problem_type_warning",
-                "2": "problem_type_meta",
-                "3": "problem_type_meta"
-            };
+            var TYPES = [
+                "problem_type_error",
+                "problem_type_warning",
+                "problem_type_meta",
+                "problem_type_meta"
+            ];
             let row = message.Row || { Start: message.Line, End: message.Line };
             let column = message.Column || { Start: message.Character, End: message.Character };
             return {
@@ -91,10 +91,11 @@
                 },
                 endPos: {
                     line: row.End - 1,
-                    ch: column.End
+                    ch: 1000 // TODO for jshint
                 },
-                message: linter + ": " + message.Message + " [" + message.Rule.Name + "]",
-                type: TYPES[message.severity]
+                message: linter + ": " + message.Message,
+                type: TYPES[message.Severity],
+                rule: message.Rule.Name
             };
         }
     }

@@ -8,11 +8,10 @@
     let _domainManager = null;
     let integrationLogic = null;
     let api = null;
-
     function callback_log(string, type)
     {
         _domainManager.emitEvent("linterhub", "log", [string, type]);
-    }
+    } 
     
     function callback_status(string, active)
     {
