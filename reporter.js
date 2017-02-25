@@ -63,6 +63,7 @@ define(function (require /*, exports, module*/) {
             mark = {
                 warnings: [],
                 errors: [],
+                infos: [],
                 lineMarks: [],
                 gutterMark: {
                     element: $("<div class='" + "repometric-linterhub" + "-gutter-messages' title='Click for details'>&nbsp;</div>")
@@ -73,7 +74,6 @@ define(function (require /*, exports, module*/) {
             mark.gutterMark.line = this.cm.setGutterMarker(token.start.line, "repometric-linterhub" + "-gutter", mark.gutterMark.element[0]);
         }
 
-        // Add message to warnings or errors array
         if (mark[message.type + "s"]) {
             mark[message.type + "s"].push(message);
         }
@@ -123,6 +123,7 @@ define(function (require /*, exports, module*/) {
 
             delete mark.errors;
             delete mark.warnings;
+            delete mark.infos;
             delete mark.lineMarks;
             delete mark.gutterMarks;
         });

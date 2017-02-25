@@ -15,7 +15,7 @@ define(function (require, exports, module) {
 
     function ProblemWidget(mark, line) {
         InlineWidget.call(this);
-        var problems     = [].concat(mark.warnings, mark.errors);
+        var problems     = [].concat(mark.warnings, mark.errors, mark.infos);
         var $html        = $(Mustache.render(widgetTemplate, { messages: problems }));
         this.$wrapperDiv = $html;
 

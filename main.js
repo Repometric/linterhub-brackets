@@ -104,7 +104,7 @@ define(function (require, exports, module) {
             {
                 case "problem_type_error": return "error";
                 case "problem_type_warning": return "warning";
-                case "problem_type_meta": return "warning"; // TODO: add hints to css and Problem Widget
+                case "problem_type_meta": return "info";
             }
         }
         var deferred = new $.Deferred();

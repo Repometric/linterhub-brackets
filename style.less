@@ -16,6 +16,11 @@
     z-index: 7;
 }
 
+.CodeMirror *[class*="repometric-linterhub-i"] {
+    border-bottom: 2px dotted #4286f4;
+    z-index: 7;
+}
+
 .CodeMirror .repometric-linterhub-gutter {
     width: 1.5em;
 }
@@ -49,7 +54,7 @@
     -webkit-user-select: text;
     user-select: text;
 
-    .repometric-linterhub-line-error, .repometric-linterhub-line-warning {
+    .repometric-linterhub-line-error, .repometric-linterhub-line-warning, .repometric-linterhub-line-info {
         background-position: left;
         background-size: 1em;
         background-repeat: no-repeat;
@@ -62,6 +67,9 @@
 
     .repometric-linterhub-line-warning {
         background-image: url(img/topcoat-warning-15.svg);
+    }
+    
+    .repometric-linterhub-line-info {
     }
 }
 
