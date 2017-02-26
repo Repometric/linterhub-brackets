@@ -1,9 +1,9 @@
 (function () {
     "use strict";
     
-    var path = require('path');
-    var linterhub = require('linterhub-ide');
-    var ide = require('./ide.brackets');
+    var path = require('path'),
+        linterhub = require('linterhub-ide'),
+        ide = require('./ide.brackets');
     
     let _domainManager = null;
     let integrationLogic = null;
@@ -62,13 +62,11 @@
     
     function activate_handler(linter, active, callback) {
         if(active == "true"){
-            console.log("deactivate");
             api.deactivate(linter).then(function(data){
                 callback(null, data); 
             });
         }
         else{
-            console.log("activate");
             api.activate(linter).then(function(data){
                 callback(null, data); 
             });

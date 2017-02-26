@@ -37,6 +37,27 @@ define(function (require, exports, module) {
     prefs.definePreference("cli_path", "string", null);
     prefs.definePreference("run_mode", "number", null);
     
+    function refresh_providers()
+    {
+        status_handler(null, "Refreshing providers..", true);
+        for (var i = 0, len = catalog.length; i < len; i++) {
+            if(catalog[i].active)
+            {
+                var language = catalog[i].languages;
+                var lang_h = language.charAt(0).toUpperCase() + language.slice(1);
+                var provider_id = "Linterhub " + lang_h;
+                if($.inArray(provider_id, CodeInspection.getProviderIDsForLanguage(language)) == -1)
+                {
+                    CodeInspection.register(language, {
+                        name: provider_id,
+                        scanFileAsync: analyzeFile
+                    });
+                }
+            }
+        }
+        status_handler(null, "Active", false);
+    }
+    
     function addGutter(editor) {
         var cm = editor._codeMirror;
         var gutters = cm.getOption("gutters").slice(0);
@@ -135,6 +156,9 @@ define(function (require, exports, module) {
                     var linter =  event.target.getAttribute("linter");
                     var active = event.target.getAttribute("active");
                     integration.exec("activate",linter, active).then(function(data){
+                        getCatalog().then(function(){
+                            refresh_providers();
+                        });
                         var $elem = $(".repometric-linterhub-manager-button[linter='" + linter +"']");
                         $elem.attr("active", active == "true" ? "false" : "true");
                         $elem.text(active == "true" ? "Disabled" : "Active");
@@ -210,10 +234,7 @@ define(function (require, exports, module) {
     AppInit.appReady(function () {
         integration.exec("initialize", ProjectManager.getProjectRoot().fullPath, prefs.get("cli_path"), prefs.get("run_mode")).then(function(){
             getCatalog().then(function(){
-                CodeInspection.register("javascript", {
-                    name: "Linterhub",
-                    scanFileAsync: analyzeFile
-                });
+                refresh_providers();
                 activateEditor(EditorManager.getActiveEditor());
             });
         });
