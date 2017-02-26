@@ -3,7 +3,7 @@
     "title": "Linterhub",
     "description": "Linterhub extension for Brackets.",
     "homepage": "https://github.com/binore/linterhub-brackets",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "author": "Oleg Safonov <by.xsofa@gmail.com> (http://github.com/binore)",
     "license": "MIT",
     "engines": {

@@ -1,0 +1,33 @@
+<div class="extension-list no-padding table-striped">
+    <table class="table">
+        <tbody>
+            {{#linters}}
+            <tr>
+                <td class="ext-info">
+                    <span class="ext-name">{{name}}</span>
+                    <div class="muted">{{languages}}</div>
+                </td>
+                <td class="ext-desc">
+                    <span class="ext-full-description">
+                        {{description}}
+                    </span>
+                </td>
+                <td class="ext-action">
+                    <div>
+                        {{#active}}
+                        <button class="btn btn-mini repometric-linterhub-manager-button primary" linter="{{name}}" active="{{active}}">
+                            Active
+                        </button>
+                        {{/active}}
+                        {{^active}}
+                        <button class="btn btn-mini repometric-linterhub-manager-button" linter="{{name}}" active="{{active}}">
+                            Disabled
+                        </button>
+                        {{/active}}
+                    </div>
+                </td>
+            </tr>
+            {{/linters}}
+        </tbody>
+    </table>
+</div>

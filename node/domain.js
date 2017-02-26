@@ -48,13 +48,28 @@
     function version_handler(callback) {
         api.version().then(function(data){
             callback(null, data); 
-        })
+        });
     }
     
     function analyze_handler(file_path, callback) {
         api.analyzeFile(file_path, linterhub.Run.force).then(function(data){
             callback(null, data); 
         });
+    }
+    
+    function activate_handler(linter, active, callback) {
+        if(active == "true"){
+            console.log("deactivate");
+            api.deactivate(linter).then(function(data){
+                callback(null, data); 
+            });
+        }
+        else{
+            console.log("activate");
+            api.activate(linter).then(function(data){
+                callback(null, data); 
+            });
+        }
     }
     
     function catalog_handler(callback) {
@@ -103,6 +118,22 @@
                 name: "result",
                 type: "object",
                 description: "The result of the execution"
+            }]
+        );
+        
+        domainManager.registerCommand(
+            "linterhub",
+            "activate",
+            activate_handler,
+            true,
+            "Activate linter",
+            [{name: "linter",
+                type: "string",
+                description: "Linter name"}],
+            [{
+                name: "active",
+                type: "boolean",
+                description: "This linter is active or not"
             }]
         );
         
