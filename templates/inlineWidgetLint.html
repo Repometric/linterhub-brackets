@@ -2,7 +2,10 @@
     {{#messages}}
         <div class="repometric-linterhub-line-{{type}} repometric-linerhub-line-{{code}}">
             {{message}}
-             Ignore this: <a href="">On current line</a> - <a href="">In this file</a> - <a href="">In whole project</a>
+             Ignore this: 
+            <a href="" class="repometric-linterhub-message-ignore" file="{{file}}" line="{{#pos}}{{line}}{{/pos}}" rule="{{code}}">On current line</a> - 
+            <a href="" class="repometric-linterhub-message-ignore" file="{{file}}" line="null" rule="{{code}}">In this file</a> - 
+            <a href="" class="repometric-linterhub-message-ignore" file="null" line="null" rule="{{code}}">In whole project</a>
         </div>
     {{/messages}}
 </div>

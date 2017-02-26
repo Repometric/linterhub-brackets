@@ -8,6 +8,8 @@
     let _domainManager = null;
     let integrationLogic = null;
     let api = null;
+    let project = null;
+    
     function callback_log(string, type)
     {
         _domainManager.emitEvent("linterhub", "log", [string, type]);
@@ -24,6 +26,7 @@
     }
     
     function init_handler(project_path, cli_path, run_mode, callback) {
+        project = project_path;
         let settings = {
             linterhub: {
                 enable: true,
@@ -35,7 +38,7 @@
                     linterhub.Run.force
                 ]
             }
-        }
+        };
 
         let version = "0.3.4";
         integrationLogic = new ide.IntegrationLogic(project_path, version, callback_log, callback_status, callback_save_settings);
@@ -70,6 +73,15 @@
                 callback(null, data); 
             });
         }
+    }
+    
+    function ignore_handler(_file, _line, _rule, callback) {
+        var file = _file == "null" ? null : path.relative(project, _file);
+        var line = _line == "null" ? null : Number(_line);
+        var rule = _rule == "null" ? null : _rule;
+        api.ignoreWarning({ file: file, line: line, error: rule }).then(function(data){
+            callback(null, data); 
+        });
     }
     
     function catalog_handler(callback) {
@@ -129,11 +141,32 @@
             "Activate linter",
             [{name: "linter",
                 type: "string",
-                description: "Linter name"}],
-            [{
+                description: "Linter name"},
+             {
                 name: "active",
-                type: "boolean",
+                type: "string",
                 description: "This linter is active or not"
+            }]
+        );
+        
+        domainManager.registerCommand(
+            "linterhub",
+            "ignore",
+            ignore_handler,
+            true,
+            "Ignore message",
+            [{name: "file",
+                type: "string",
+                description: "File to ignore"},
+             {
+                name: "line",
+                type: "string",
+                description: "Line to ignore"
+            },
+            {
+                name: "rule",
+                type: "string",
+                description: "Rule to ignore"
             }]
         );
         

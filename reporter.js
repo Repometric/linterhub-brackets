@@ -176,64 +176,6 @@ define(function (require /*, exports, module*/) {
         }
     };
 
-    /**
-     * Determines if there is a fatal error in the linting report
-     */
-    Reporter.prototype.checkFatal = function (messages) {
-        // If the last message created by linter is falsy, that means
-        // that we have encoutered a fatal error...
-        if (messages.length > 2 && !messages[messages.length - 1]) {
-            $(linterReporter).triggerHandler("fatalError", messages[messages.length - 2]);
-            return true;
-        }
-
-        this.clearFatalError();
-        return false;
-    };
-
-
-    Reporter.prototype.clearFatalError = function () {
-        $(linterReporter).triggerHandler("fatalError", null);
-    };
-
-
-    Reporter.prototype._runReport = function (cm, messages) {
-        var _self = this;
-        var deferred = Promise.defer();
-
-
-        // Run as operation for best performance
-        setTimeout(function () {
-            cm.operation(function() {
-                _self.clearMarks();
-
-                $(linterReporter).triggerHandler("lintMessage", [messages]);
-
-                if (messages) {
-                    _self.checkFatal(messages);
-                    _self.cm       = cm;
-                    _self.messages = messages;
-
-                    _.forEach(messages, function (message) {
-                        if (!message) {
-                            return;
-                        }
-
-                        if (message.token) {
-                            _self.addGutterMarks(message, message.token);
-                            _self.addLineMarks(message, message.token);
-                        }
-                    });
-                }
-
-                deferred.resolve();
-            });
-        }, 0);
- 
-        return deferred.promise;
-    };
-
-
     function linterReporter () {
         var _reporter = new Reporter();
 

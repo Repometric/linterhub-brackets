@@ -1,24 +1,24 @@
 define(function (require, exports, module) {
     "use strict";
 
-    var AppInit = brackets.getModule("utils/AppInit");
-    var ExtensionUtils = brackets.getModule("utils/ExtensionUtils");
-    var CommandManager = brackets.getModule("command/CommandManager");
-    var Menus          = brackets.getModule("command/Menus");
-    var CodeInspection  = brackets.getModule('language/CodeInspection');
-    var LanguageManager = brackets.getModule('language/LanguageManager');
-    var ProjectManager  = brackets.getModule('project/ProjectManager');
-    var NodeDomain      = brackets.getModule('utils/NodeDomain');
-    var StatusBar       = brackets.getModule("widgets/StatusBar");
-    var Dialogs         = brackets.getModule("widgets/Dialogs"),
-        DefaultDialogs = brackets.getModule("widgets/DefaultDialogs");
-    var DocumentManager = brackets.getModule("document/DocumentManager");
-    var PreferencesManager = brackets.getModule("preferences/PreferencesManager");
-    var Reporter = require("reporter");
-    var EditorManager = brackets.getModule("editor/EditorManager");
-    var CodeMirror = brackets.getModule("thirdparty/CodeMirror2/lib/codemirror");
-    var Mustache       = brackets.getModule("thirdparty/mustache/mustache");
-    var managerTemplate = require("text!templates/managerPanel.html");
+    var AppInit = brackets.getModule("utils/AppInit"),
+        ExtensionUtils = brackets.getModule("utils/ExtensionUtils"),
+        CommandManager = brackets.getModule("command/CommandManager"),
+        Menus = brackets.getModule("command/Menus"),
+        CodeInspection = brackets.getModule('language/CodeInspection'),
+        LanguageManager = brackets.getModule('language/LanguageManager'),
+        ProjectManager = brackets.getModule('project/ProjectManager'),
+        NodeDomain = brackets.getModule('utils/NodeDomain'),
+        StatusBar = brackets.getModule("widgets/StatusBar"),
+        Dialogs = brackets.getModule("widgets/Dialogs"),
+        DefaultDialogs = brackets.getModule("widgets/DefaultDialogs"),
+        DocumentManager = brackets.getModule("document/DocumentManager"),
+        PreferencesManager = brackets.getModule("preferences/PreferencesManager"),
+        Reporter = require("reporter"),
+        EditorManager = brackets.getModule("editor/EditorManager"),
+        CodeMirror = brackets.getModule("thirdparty/CodeMirror2/lib/codemirror"),
+        Mustache = brackets.getModule("thirdparty/mustache/mustache"),
+        managerTemplate = require("text!templates/managerPanel.html");
     
     var $foo = $("<div class='linterhub-statusbar'>Linterhub: Unable</div>");
     StatusBar.addIndicator("repometric.linterhub-brackets.status", $foo, true, "");
@@ -61,6 +61,14 @@ define(function (require, exports, module) {
     function gutterClick(cm, lineIndex, gutterId) {
         if (gutterId === "repometric-linterhub-gutter") {
             reporter.toggleLineDetails(lineIndex);
+            $(".repometric-linterhub-message-ignore").click(function(event) {
+                var line = event.target.getAttribute("line");
+                var file = event.target.getAttribute("file");
+                var rule = event.target.getAttribute("rule");
+                integration.exec("ignore", file, line, rule).then(function(){
+                    analyze_handler();
+                });
+            });
         }
     }
 
@@ -129,7 +137,7 @@ define(function (require, exports, module) {
                     integration.exec("activate",linter, active).then(function(data){
                         var $elem = $(".repometric-linterhub-manager-button[linter='" + linter +"']");
                         $elem.attr("active", active == "true" ? "false" : "true");
-                        $elem.text(active == "true" ? "Disabled" : "Active")
+                        $elem.text(active == "true" ? "Disabled" : "Active");
                         if(active == "true")
                             $elem.removeClass("primary");
                         else
@@ -154,9 +162,7 @@ define(function (require, exports, module) {
         var deferred = new $.Deferred();
         integration.exec("analyzeFile", filePath)
             .then(function (result) {
-                console.log(JSON.stringify(result));
                 var activeEditor = EditorManager.getActiveEditor();
-
                 var cm = activeEditor._codeMirror;
                 var messages = [];
                 result.errors.forEach(function(x){
@@ -172,7 +178,8 @@ define(function (require, exports, module) {
                         "pos": {
                             "line": x.pos.line + 1,
                             "ch": x.pos.ch + 1
-                        }
+                        },
+                        "file": filePath
                     });
                 });
                 reporter.report(cm, messages);
@@ -180,7 +187,6 @@ define(function (require, exports, module) {
                 deactivateEditor(EditorManager.getActiveEditor());
                 activateEditor(EditorManager.getActiveEditor());
                 addGutter(EditorManager.getActiveEditor());
-            
                 return deferred.resolve(result);
             }, function (err) {
                 deferred.reject(err);
@@ -208,7 +214,7 @@ define(function (require, exports, module) {
                     name: "Linterhub",
                     scanFileAsync: analyzeFile
                 });
-                activateEditor(EditorManager.getActiveEditor());  
+                activateEditor(EditorManager.getActiveEditor());
             });
         });
     });
