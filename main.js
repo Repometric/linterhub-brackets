@@ -3,240 +3,27 @@ define(function (require, exports, module) {
 
     var AppInit = brackets.getModule("utils/AppInit"),
         ExtensionUtils = brackets.getModule("utils/ExtensionUtils"),
-        CommandManager = brackets.getModule("command/CommandManager"),
         Menus = brackets.getModule("command/Menus"),
-        CodeInspection = brackets.getModule('language/CodeInspection'),
-        LanguageManager = brackets.getModule('language/LanguageManager'),
-        ProjectManager = brackets.getModule('project/ProjectManager'),
-        NodeDomain = brackets.getModule('utils/NodeDomain'),
-        StatusBar = brackets.getModule("widgets/StatusBar"),
-        Dialogs = brackets.getModule("widgets/Dialogs"),
-        DefaultDialogs = brackets.getModule("widgets/DefaultDialogs"),
-        DocumentManager = brackets.getModule("document/DocumentManager"),
-        PreferencesManager = brackets.getModule("preferences/PreferencesManager"),
-        Reporter = require("reporter"),
-        EditorManager = brackets.getModule("editor/EditorManager"),
-        CodeMirror = brackets.getModule("thirdparty/CodeMirror2/lib/codemirror"),
-        Mustache = brackets.getModule("thirdparty/mustache/mustache"),
-        managerTemplate = require("text!templates/managerPanel.html");
+        Preferences = require("preferences"),
+        Handlers = require("handlers"),
+        EditorManager = brackets.getModule("editor/EditorManager");
     
-    var $foo = $("<div class='linterhub-statusbar'>Linterhub: Unable</div>");
-    StatusBar.addIndicator("repometric.linterhub-brackets.status", $foo, true, "");
+    var preferences = new Preferences();
+    var handlers = new Handlers(preferences);
     
-    var catalog = null; // TODO: parse languages of active linters and register providers
-    var integration = new NodeDomain("linterhub", ExtensionUtils.getModulePath(module, "node/domain"));
-    var prefs = PreferencesManager.getExtensionPrefs("repometric.linterhub-brackets");
-    var reporter = new Reporter();
-    
-    var bracketsLinterEnabled = true;
-    var CMD_SHOW_LINE_DETAILS = "repometric.linterhub-atom.showLineDetails";
-
     ExtensionUtils.loadStyleSheet(module, "style.less");
-    CommandManager.register("Show Line Details", CMD_SHOW_LINE_DETAILS, handleToggleLineDetails);
-    
-    prefs.definePreference("cli_path", "string", null);
-    prefs.definePreference("run_mode", "number", null);
-    
-    function refresh_providers()
-    {
-        status_handler(null, "Refreshing providers..", true);
-        for (var i = 0, len = catalog.length; i < len; i++) {
-            if(catalog[i].active)
-            {
-                var language = catalog[i].languages;
-                var lang_h = language.charAt(0).toUpperCase() + language.slice(1);
-                var provider_id = "Linterhub " + lang_h;
-                if($.inArray(provider_id, CodeInspection.getProviderIDsForLanguage(language)) == -1)
-                {
-                    CodeInspection.register(language, {
-                        name: provider_id,
-                        scanFileAsync: analyzeFile
-                    });
-                }
-            }
-        }
-        status_handler(null, "Active", false);
-    }
-    
-    function addGutter(editor) {
-        var cm = editor._codeMirror;
-        var gutters = cm.getOption("gutters").slice(0);
-        if (gutters.indexOf("repometric-linterhub-gutter") === -1) {
-            gutters.unshift("repometric-linterhub-gutter");
-            cm.setOption("gutters", gutters);
-        }
-    }
-    
-    function activateEditor(editor) {
-        if(editor !== null)
-            editor._codeMirror.on("gutterClick", gutterClick);
-    }
-
-
-    function deactivateEditor(editor) {
-        if(editor !== null)
-            editor._codeMirror.off("gutterClick", gutterClick);
-    }
-
-
-    function gutterClick(cm, lineIndex, gutterId) {
-        if (gutterId === "repometric-linterhub-gutter") {
-            reporter.toggleLineDetails(lineIndex);
-            $(".repometric-linterhub-message-ignore").click(function(event) {
-                var line = event.target.getAttribute("line");
-                var file = event.target.getAttribute("file");
-                var rule = event.target.getAttribute("rule");
-                integration.exec("ignore", file, line, rule).then(function(){
-                    analyze_handler();
-                });
-            });
-        }
-    }
-
-    function handleToggleLineDetails() {
-        reporter.toggleLineDetails();
-    }
-    
-    function log_handler(domain, message, type)
-    {
-        switch(type)
-        {
-            case "info":
-                console.info(message);
-                break;
-            case "error":
-                console.error(message);
-                break;
-            case "warn":
-                console.warn(message);
-                break;
-        }
-    }
-    
-    function status_handler(domain, message, active)
-    {
-        if(active) StatusBar.showBusyIndicator();
-        else StatusBar.hideBusyIndicator();
-        $(".linterhub-statusbar").text("Linterhub: " + message);
-    }
-    
-    function version_handler() {
-        integration.exec("version").then(function (result){
-            Dialogs.showModalDialog("repometric-linterhub-version", "Linterhub Version", result);
-        });
-    }
-    
-    function settings_handler(domain, name, value)
-    {
-        prefs.set(name, value);
-    }
-    
-    function analyze_handler()
-    {
-        if(DocumentManager.getCurrentDocument() !== null)
-            CodeInspection.inspectFile(DocumentManager.getCurrentDocument().file);
-    }
-    
-    function getCatalog()
-    {
-        return integration.exec("catalog").then(function(data){
-            catalog = data;
-            return data;
-        });
-    }
-    
-    function manager_handler()
-    {
-        getCatalog().then(function(){
-           if(catalog !== null)
-            {
-                var $html = Mustache.render(managerTemplate, { linters: catalog });
-                var dialog = Dialogs.showModalDialog("repometric-linterhub-manager no-padding", "Linters Manager", $html);
-                $(".repometric-linterhub-manager-button").click(function(event) {
-                    var linter =  event.target.getAttribute("linter");
-                    var active = event.target.getAttribute("active");
-                    integration.exec("activate",linter, active).then(function(data){
-                        getCatalog().then(function(){
-                            refresh_providers();
-                        });
-                        var $elem = $(".repometric-linterhub-manager-button[linter='" + linter +"']");
-                        $elem.attr("active", active == "true" ? "false" : "true");
-                        $elem.text(active == "true" ? "Disabled" : "Active");
-                        if(active == "true")
-                            $elem.removeClass("primary");
-                        else
-                            $elem.addClass("primary");
-                    });
-                });
-            } 
-        });
-    }
-
-    function analyzeFile(text, filePath)
-    {
-        function convert_type(type)
-        {
-            switch(type)
-            {
-                case "problem_type_error": return "error";
-                case "problem_type_warning": return "warning";
-                case "problem_type_meta": return "info";
-            }
-        }
-        var deferred = new $.Deferred();
-        integration.exec("analyzeFile", filePath)
-            .then(function (result) {
-                var activeEditor = EditorManager.getActiveEditor();
-                var cm = activeEditor._codeMirror;
-                var messages = [];
-                result.errors.forEach(function(x){
-                    messages.push({
-                        "id": x.rule,
-                        "code": x.rule,
-                        "type": convert_type(x.type),
-                        "message": x.message,
-                        "token": {
-                            "start": x.pos,
-                            "end": x.endPos
-                        },
-                        "pos": {
-                            "line": x.pos.line + 1,
-                            "ch": x.pos.ch + 1
-                        },
-                        "file": filePath
-                    });
-                });
-                reporter.report(cm, messages);
-                reporter.toggleLineDetails();
-                deactivateEditor(EditorManager.getActiveEditor());
-                activateEditor(EditorManager.getActiveEditor());
-                addGutter(EditorManager.getActiveEditor());
-                return deferred.resolve(result);
-            }, function (err) {
-                deferred.reject(err);
-            });
-        return deferred.promise();
-    }
 
     var menu = Menus.addMenu("Linterhub", "repometric.linterhub-brackets.main-menu");
-    CommandManager.register("Linterhub Version", "linterhub-menu.version", version_handler);
-    CommandManager.register("Analyze file", "linterhub-menu.analyze", analyze_handler);
-    CommandManager.register("Open Linters Manager", "linterhub-menu.manager", manager_handler);
     menu.addMenuItem("linterhub-menu.analyze");
     menu.addMenuItem("linterhub-menu.manager");
     menu.addMenuDivider();
     menu.addMenuItem("linterhub-menu.version");
     
-    integration.on("log", log_handler);
-    integration.on("status", status_handler);
-    integration.on("settings", settings_handler);
-    
     AppInit.appReady(function () {
-        integration.exec("initialize", ProjectManager.getProjectRoot().fullPath, prefs.get("cli_path"), prefs.get("run_mode")).then(function(){
-            getCatalog().then(function(){
-                refresh_providers();
-                activateEditor(EditorManager.getActiveEditor());
-            });
+        handlers.initialize(preferences.get("cli_path"), preferences.get("run_mode")).then(function(){
+            handlers.refresh_providers().then(function(){
+                handlers.reporterHandlers.activateEditor(EditorManager.getActiveEditor()); 
+            });  
         });
     });
 
