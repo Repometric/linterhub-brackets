@@ -1,18 +1,19 @@
 (function () {
     "use strict";
     
-    var path = require('path');
-    var linterhub = require('linterhub-ide');
-    var ide = require('./ide.brackets');
+    var path = require('path'),
+        linterhub = require('linterhub-ide'),
+        ide = require('./ide.brackets');
     
     let _domainManager = null;
     let integrationLogic = null;
     let api = null;
-
+    let project = null;
+    
     function callback_log(string, type)
     {
         _domainManager.emitEvent("linterhub", "log", [string, type]);
-    }
+    } 
     
     function callback_status(string, active)
     {
@@ -25,6 +26,7 @@
     }
     
     function init_handler(project_path, cli_path, run_mode, callback) {
+        project = project_path;
         let settings = {
             linterhub: {
                 enable: true,
@@ -36,7 +38,7 @@
                     linterhub.Run.force
                 ]
             }
-        }
+        };
 
         let version = "0.3.4";
         integrationLogic = new ide.IntegrationLogic(project_path, version, callback_log, callback_status, callback_save_settings);
@@ -49,11 +51,33 @@
     function version_handler(callback) {
         api.version().then(function(data){
             callback(null, data); 
-        })
+        });
     }
     
     function analyze_handler(file_path, callback) {
         api.analyzeFile(file_path, linterhub.Run.force).then(function(data){
+            callback(null, data); 
+        });
+    }
+    
+    function activate_handler(linter, active, callback) {
+        if(active == "true"){
+            api.deactivate(linter).then(function(data){
+                callback(null, data); 
+            });
+        }
+        else{
+            api.activate(linter).then(function(data){
+                callback(null, data); 
+            });
+        }
+    }
+    
+    function ignore_handler(_file, _line, _rule, callback) {
+        var file = _file == "null" ? null : path.relative(project, _file);
+        var line = _line == "null" ? null : Number(_line);
+        var rule = _rule == "null" ? null : _rule;
+        api.ignoreWarning({ file: file, line: line, error: rule }).then(function(data){
             callback(null, data); 
         });
     }
@@ -104,6 +128,43 @@
                 name: "result",
                 type: "object",
                 description: "The result of the execution"
+            }]
+        );
+        
+        domainManager.registerCommand(
+            "linterhub",
+            "activate",
+            activate_handler,
+            true,
+            "Activate linter",
+            [{name: "linter",
+                type: "string",
+                description: "Linter name"},
+             {
+                name: "active",
+                type: "string",
+                description: "This linter is active or not"
+            }]
+        );
+        
+        domainManager.registerCommand(
+            "linterhub",
+            "ignore",
+            ignore_handler,
+            true,
+            "Ignore message",
+            [{name: "file",
+                type: "string",
+                description: "File to ignore"},
+             {
+                name: "line",
+                type: "string",
+                description: "Line to ignore"
+            },
+            {
+                name: "rule",
+                type: "string",
+                description: "Rule to ignore"
             }]
         );
         
